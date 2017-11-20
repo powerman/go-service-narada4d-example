@@ -1,0 +1,18 @@
+#!/bin/sh
+die() { echo $0: $1 >&2; exit 1; }
+
+test "$(id -n -u)" = "root"     && exec chpst -u app -- "$0" "$@"
+test -n "$NARADA4D_DIR"         || die "NARADA4D_DIR is not set"
+cd "$NARADA4D_DIR"              || die "NARADA4D_DIR is not a directory"
+test -L .version                || die "NARADA4D_DIR is not initialized"
+test -d "$NARADA4D_SCHEMA"      || die "NARADA4D_SCHEMA is not a directory"
+mkdir -p "$NARADA4D_BACKUP"     || die "NARADA4D_BACKUP is not a directory"
+test -n "$NARADA4D_SKIP_LOCK"   || exec narada4d-lock "$0" "$@"
+
+v="$(readlink .version)"
+sed -n "s/ *$//;s/^VERSION *//p" "$NARADA4D_SCHEMA/migrate" |
+	grep -q -x -F "$v"      || die "unknown schema version '$v'"
+
+full="$NARADA4D_BACKUP/v$v-full.tgz"
+tar -c -z -f "$full.tmp" .version $(ls -d db 2>/dev/null) &&
+	mv "$full.tmp" "$full"  || die "failed"

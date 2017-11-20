@@ -1,0 +1,20 @@
+#!/bin/sh
+die() { echo $0: $1 >&2; exit 1; }
+
+test "$(id -n -u)" = "root"     && exec chpst -u app -- "$0" "$@"
+test -n "$NARADA4D_DIR"         || die "NARADA4D_DIR is not set"
+cd "$NARADA4D_DIR"              || die "NARADA4D_DIR is not a directory"
+test -L .version                || die "NARADA4D_DIR is not initialized"
+
+test $# -eq 0 && set -- sh
+
+test -n "$NARADA4D_SKIP_LOCK"   && exec "$@"
+export NARADA4D_SKIP_LOCK=1
+export PS1="[LOCKED] $PS1"
+
+exec 3<.lock
+exec 4<.lock.queue
+flock -x 4
+flock -x 3
+exec 4>&-
+exec "$@"

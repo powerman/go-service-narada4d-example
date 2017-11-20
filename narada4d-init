@@ -1,0 +1,13 @@
+#!/bin/sh
+die() { echo $0: $1 >&2; exit 1; }
+
+test "$(id -n -u)" = "root"     && exec chpst -u app -- "$0" "$@"
+test -n "$NARADA4D_DIR"         || die "NARADA4D_DIR is not set"
+
+set -ex
+mkdir -p "$NARADA4D_DIR"
+cd "$NARADA4D_DIR"
+test ! -e .version
+touch .lock
+touch .lock.queue
+ln -s 0 .version

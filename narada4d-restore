@@ -1,0 +1,34 @@
+#!/bin/sh
+die() { echo $0: $1 >&2; exit 1; }
+usage() { echo "usage: $0 <version> [paths…]" >&2; exit 1; }
+
+test "$(id -n -u)" = "root"     && exec chpst -u app -- "$0" "$@"
+test -n "$NARADA4D_DIR"         || die "NARADA4D_DIR is not set"
+cd "$NARADA4D_DIR"              || die "NARADA4D_DIR is not a directory"
+test -L .version                || die "NARADA4D_DIR is not initialized"
+test -d "$NARADA4D_SCHEMA"      || die "NARADA4D_SCHEMA is not a directory"
+test -d "$NARADA4D_BACKUP"      || die "NARADA4D_BACKUP is not a directory"
+test -n "$NARADA4D_SKIP_LOCK"   || exec narada4d-lock "$0" "$@"
+
+test $# -eq 0                   && usage
+full="$NARADA4D_BACKUP/v$1-full.tgz"
+
+rm -f /tmp/.version             || die "failed"
+tar -x -z -p -f "$full" -C /tmp .version || die "not a backup: '$full'"
+v="$(readlink /tmp/.version)"
+rm -f /tmp/.version
+sed -n "s/ *$//;s/^VERSION *//p" "$NARADA4D_SCHEMA/migrate" |
+	grep -q -x -F "$v"      || die "unknown schema version '$v'"
+
+if test $# -gt 1; then
+	test "$1" = "$v" || ln -nsf dirty .version || die "failed to set version"
+	shift
+	tar -x -z -v -p -f "$full" "$@" || die "failed to restore $@"
+	exit
+fi
+
+ln -nsf dirty .version          || die "failed to set version"
+test -d cache && find cache/ -mindepth 1 -maxdepth 1 -exec rm -rf {} \;
+test -d db    && find db/    -mindepth 1 -maxdepth 1 -exec rm -rf {} \;
+tar -x -z -v -p -f "$full" --anchored --exclude .version || die "failed to restore"
+ln -nsf "$v" .version           || die "failed to set version"

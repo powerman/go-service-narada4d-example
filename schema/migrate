@@ -1,0 +1,65 @@
+# This file describe operations needed for migration between versions,
+# both for UPGRADE and DOWNGRADE.
+#
+# Documentation about syntax of this file:
+# https://metacpan.org/pod/App::migrate#SYNTAX
+#
+# You shouldn't modify anything in this file BEFORE LAST "VERSION" LINE!
+# If you will do this you'll likely BREAK DOWNGRADE for some version.
+# Exceptions from this rule are:
+# - git rebase
+# - add/remove comments, empty lines or do other visual/formatting changes
+# - add new DEFINEs
+# - modification of downgrade/after_downgrade operations needed to FIX
+#   BROKEN DOWNGRADE
+
+
+DEFINE2 only_before_upgrade
+before_upgrade
+downgrade true
+
+DEFINE2 only_upgrade
+upgrade
+downgrade true
+
+DEFINE2 only_downgrade
+upgrade true
+downgrade
+
+DEFINE2 only_after_downgrade
+upgrade true
+after_downgrade
+
+# mkdir some/dir ...
+# - parameters can't contain /../ or begin with /
+DEFINE2 mkdir
+upgrade
+  perl -e 'exit grep {m{\A/|(\A|/)[.][.](/|\z)}} @ARGV' "$@"
+  mkdir "$@"
+downgrade
+  perl -e 'exit grep {m{\A/|(\A|/)[.][.](/|\z)}} @ARGV' "$@"
+  rm -rf "$@"
+
+# rmdir some/dir ...
+# - parameters can't contain /../ or begin with /
+DEFINE2 rmdir
+upgrade
+  perl -e 'exit grep {m{\A/|(\A|/)[.][.](/|\z)}} @ARGV' "$@"
+  rm -rf "$@"
+after_downgrade
+  perl -e 'exit grep {m{\A/|(\A|/)[.][.](/|\z)}} @ARGV' "$@"
+  narada4d-restore "$MIGRATE_NEXT_VERSION" "$@"
+
+# rm some/file ...
+# - parameters can't contain /../ or begin with /
+DEFINE2 rm
+upgrade
+  perl -e 'exit grep {m{\A/|(\A|/)[.][.](/|\z)}} @ARGV' "$@"
+  rm -f "$@"
+after_downgrade
+  perl -e 'exit grep {m{\A/|(\A|/)[.][.](/|\z)}} @ARGV' "$@"
+  narada4d-restore "$MIGRATE_NEXT_VERSION" "$@"
+
+
+# Initial version. MUST be 0 for new empty projects.
+VERSION 0

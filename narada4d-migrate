@@ -1,0 +1,37 @@
+#!/bin/sh
+die() { echo $0: $1 >&2; exit 1; }
+usage() { echo "usage: $0 <version>" >&2; exit 1; }
+
+test "$(id -n -u)" = "root"     && exec chpst -u app -- "$0" "$@"
+test -n "$NARADA4D_DIR"         || die "NARADA4D_DIR is not set"
+cd "$NARADA4D_DIR"              || die "NARADA4D_DIR is not a directory"
+test -L .version                || die "NARADA4D_DIR is not initialized"
+test -d "$NARADA4D_SCHEMA"      || die "NARADA4D_SCHEMA is not a directory"
+test -n "$NARADA4D_SKIP_LOCK"   || exec narada4d-lock "$0" "$@"
+
+test $# -eq 1                   || usage
+
+v_src="$(readlink .version)"
+v_dst="$1"
+sed -n "s/ *$//;s/^VERSION *//p" "$NARADA4D_SCHEMA/migrate" |
+	grep -q -x -F "$v_src"  || die "unknown schema version '$v_src'"
+sed -n "s/ *$//;s/^VERSION *//p" "$NARADA4D_SCHEMA/migrate" |
+	grep -q -x -F "$v_dst"  || die "unknown schema version '$v_dst'"
+
+SHELL=false migrate \
+	-f "$NARADA4D_SCHEMA/migrate" \
+	-B narada4d-backup \
+	-R 'narada4d-restore $MIGRATE_PREV_VERSION' \
+	"$v_src" "$v_dst" \
+	>/tmp/migrate.$$ 2>&1 </dev/null
+code=$?
+cat /tmp/migrate.$$
+if test $code -eq 0; then
+	ln -nsf "$v_dst" .version       || die "failed to set version"
+elif grep -q 'Successfully undone interrupted migration' /tmp/migrate.$$; then
+	ln -nsf "$v_src" .version       || die "failed to set version"
+else
+	ln -nsf dirty .version          || die "failed to set version"
+fi
+rm /tmp/migrate.$$
+test $code -eq 0                        || die "failed"
