@@ -3,8 +3,10 @@
 # !name     - include previously excluded "name"
 # a*b?c/d[0-9]e[^a-z\]]f\[g     - pattern
 .git
+.circleci
 README.md
 docker-compose.yml*
 Dockerfile*
+circleci_build
 build
 var

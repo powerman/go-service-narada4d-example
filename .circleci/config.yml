@@ -1,0 +1,86 @@
+# Snippets for jobs:
+jobs-references:
+    container_config: &container_config
+        working_directory: &working_directory /go/src/github.com/powerman/go-service-narada4d-example
+        docker:
+            - image: cpdpro/baseimage:build-golang
+
+    setup_testing: &setup_testing
+            run:
+                name: Setup testing environment
+                command: |
+                    echo "export NARADA4D_DIR=/data/var"        >> $BASH_ENV
+                    echo "export NARADA4D_SCHEMA=$PWD/schema"   >> $BASH_ENV
+                    echo "export NARADA4D_BACKUP=/data/backup"  >> $BASH_ENV
+                    mkdir -p /data
+                    bash setup-volume true
+
+    setup_image: &setup_image
+            run:
+                name: Setup docker image name
+                command: |
+                    REPONAME="$(basename $PWD)" # no CIRCLE_PROJECT_REPONAME on local
+                    if test "$CIRCLE_BUILD_NUM"; then # not local
+                        IMAGE="powerman/$REPONAME:$CIRCLE_SHA1"
+                    else
+                        IMAGE="$REPONAME:latest"
+                    fi
+                    echo "export IMAGE=$IMAGE" >> $BASH_ENV
+
+version: 2
+jobs:
+    test:
+        <<: *container_config
+        steps:
+            - checkout
+            - setup_remote_docker
+            - *setup_testing
+            - run: ./install
+            - run: ./test
+    build:
+        <<: *container_config
+        steps:
+            - checkout
+            - setup_remote_docker
+            - *setup_testing
+            - run: ./install
+            - run: ./test
+            - *setup_image
+            - deploy:
+                name: Deploy to Docker Hub
+                command: |
+                    docker build -t $IMAGE .
+                    if test "$CIRCLE_BUILD_NUM"; then # not local
+                        docker login -u "$DOCKER_USER" -p "$DOCKER_PASS"
+                        docker push $IMAGE
+                    fi
+
+# Snippets for workflows:
+workflows-references:
+    filter_other: &filter_other
+                filters:
+                    branches:
+                        ignore:
+                            - master
+    filter_master: &filter_master
+                filters:
+                    branches:
+                        only: master
+
+workflows:
+    version: 2
+    test:
+        jobs:
+            - test:
+                <<: *filter_other
+    test_deploy:
+        jobs:
+            - build:
+                <<: *filter_master
+
+### Notify about every job in a workflow!
+experimental:
+    notify:
+        branches:
+            only:
+                - master

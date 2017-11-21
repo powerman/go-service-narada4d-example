@@ -1,0 +1,6 @@
+#!/bin/bash
+circleci build \
+    -v "$PWD":/tmp/_circleci_local_build_repo \
+    -v /var/run/docker.sock:/var/run/docker-temp.sock \
+    -e API_KEY="$API_KEY" \
+    "$@"
