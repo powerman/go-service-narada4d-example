@@ -13,8 +13,6 @@ as Docker image.
 
 Build, test and deploy to local docker swarm: `EXAMPLE_PORT=8080 ./build`.
 
-Only this method use `./build` and `Dockerfile.build` files.
-
 Additionally it'll add generated files into current directory to make it
 easier to test/run/investigate on host, without docker.
 

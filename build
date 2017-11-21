@@ -1,23 +1,21 @@
 #!/bin/bash
-docker_run() { docker run -i -t --rm -e TERM=${TERM/rxvt-unicode/xterm} "$@"; }
-info() { echo -e "\n\e[1;33m$@\e[0m\n"; }
-
 set -e -o pipefail
 
 SERVICE=${PWD##*/}
 IMAGE=$SERVICE
-src="-v $PWD:${PWD/$GOPATH//go}"
 
-info "Building image: $IMAGE:build"
-docker build -q -t $IMAGE:build -f Dockerfile.build .
+VOLUME_DIR=${PWD/$GOPATH//go}
+docker run -i -t --rm \
+	-v /var/run/docker.sock:/var/run/docker.sock \
+	-v $PWD:$VOLUME_DIR \
+	-e VOLUME_DIR=$VOLUME_DIR \
+	-e NARADA4D_DIR=$VOLUME_DIR/var \
+	-e NARADA4D_SCHEMA=$VOLUME_DIR/schema \
+	-e NARADA4D_BACKUP=/tmp/backup \
+	--workdir=$VOLUME_DIR \
+	cpdpro/baseimage:build-golang \
+	bash -c "./install && ./test && docker build -t $IMAGE ."
 
-info "Building and testing project"
-docker_run $src $IMAGE:build
-
-info "Building image: $IMAGE"
-docker build -q -t $IMAGE .
-
-info "Deploying stack: $SERVICE"
 export IMAGE=$(docker image inspect --format='{{.ID}}' $IMAGE)
 gotmpl <docker-compose.yml.tmpl >docker-compose.yml
 docker stack deploy -c docker-compose.yml $SERVICE
