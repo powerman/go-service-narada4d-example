@@ -63,3 +63,13 @@ after_downgrade
 
 # Initial version. MUST be 0 for new empty projects.
 VERSION 0
+
+
+mkdir db
+
+upgrade
+  echo -n 0 > db/counter
+downgrade
+  rm -f db/counter
+
+VERSION 1

@@ -1,0 +1,19 @@
+version: "3.1"
+services:
+    example:
+        deploy:
+            # Actual constraint should be a node with the volume.
+            # This config is correct for swarms with one manager node.
+            placement:
+                constraints:
+                    - node.role == manager
+            replicas: 1
+        environment:
+            API_KEY: {{ .Env.API_KEY | json }}
+        image: {{ or .Env.IMAGE "go-service-narada4d-example:latest" | json }}
+        ports:
+            - "{{ or .Env.EXAMPLE_PORT 0 | json | trimq }}:8080"
+        volumes:
+            - data:/data
+volumes:
+    data:

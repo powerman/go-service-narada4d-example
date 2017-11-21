@@ -1,0 +1,23 @@
+#!/bin/bash
+docker_run() { docker run -i -t --rm -e TERM=${TERM/rxvt-unicode/xterm} "$@"; }
+info() { echo -e "\n\e[1;33m$@\e[0m\n"; }
+
+set -e -o pipefail
+
+SERVICE=${PWD##*/}
+IMAGE=$SERVICE
+src="-v $PWD:${PWD/$GOPATH//go}"
+
+info "Building image: $IMAGE:build"
+docker build -q -t $IMAGE:build -f Dockerfile.build .
+
+info "Building and testing project"
+docker_run $src $IMAGE:build
+
+info "Building image: $IMAGE"
+docker build -q -t $IMAGE .
+
+info "Deploying stack: $SERVICE"
+export IMAGE=$(docker image inspect --format='{{.ID}}' $IMAGE)
+gotmpl <docker-compose.yml.tmpl >docker-compose.yml
+docker stack deploy -c docker-compose.yml $SERVICE

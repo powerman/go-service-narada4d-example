@@ -1,0 +1,4 @@
+#!/bin/sh
+exec 2>&1
+cd /app || exit 1
+exec chpst -u app example-service

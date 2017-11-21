@@ -1,0 +1,12 @@
+#!/bin/bash
+### [version] [branch] revision[-dirty] build_date_time
+set -e -o pipefail
+
+ver="$(git tag -l --sort=-version:refname --merged HEAD 'v*' | head -n 1)"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+rev="$(git log -1 --format='%h')"
+git update-index -q --refresh --unmerged >/dev/null
+git diff-index --quiet HEAD || dirty="-dirty"
+test "$branch" = "HEAD" || test "$branch" = "master" && branch=
+
+echo "${ver:+$ver }${branch:+$branch }$rev$dirty $(date -u +"%F_%T")"

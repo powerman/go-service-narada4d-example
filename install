@@ -1,0 +1,9 @@
+#!/bin/bash
+set -x -e -o pipefail
+
+rm -rf bin/
+mkdir bin/
+cp narada4d-* bin/
+CGO_ENABLED=0 go get -v -installsuffix static ./...
+CGO_ENABLED=0 GOBIN=$PWD/bin go install -v -installsuffix static \
+	-ldflags "-X 'main.ver=$(./gitver)'" ./...
