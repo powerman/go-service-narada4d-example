@@ -4,11 +4,14 @@ set -x -e -o pipefail
 
 narada4d-try-migrate
 go get -v -t ./...
+
 go test -v -race ./...
+
 gometalinter \
 	--exclude 'error return value not checked \(log\w*\.Err\(' \
 	--exclude 'error return value not checked \(defer ' \
 	--deadline 1m -t ./...
-pkgs=$(go list ./... | grep -v /cmd/)
-gotestcover -coverprofile cover.out -coverpkg $(echo $pkgs | sed 's/ /,/g') ./...
+
+libpkgs=$(go list -f '{{if ne .Name "main"}}{{.ImportPath}}{{end}}' ./...)
+gotestcover -coverprofile cover.out -coverpkg "$(echo $libpkgs | sed 's/ /,/g')" ./...
 go tool cover -func cover.out
