@@ -10,6 +10,9 @@ go test -v -race ./...
 gometalinter \
 	--exclude 'error return value not checked \(log\w*\.Err\(' \
 	--exclude 'error return value not checked \(defer ' \
+	--exclude 'Errors unhandled.,LOW,HIGH' \
+	--exclude 'declaration of "log" shadows' \
+	--exclude 'declaration of "err" shadows' \
 	--deadline 1m -t ./...
 
 libpkgs=$(go list -f '{{if ne .Name "main"}}{{.ImportPath}}{{end}}' ./...)
